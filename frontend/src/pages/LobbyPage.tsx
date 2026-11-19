@@ -7,7 +7,7 @@ import PokemonSearch from "../components/PokemonSearch";
 import ConnectionStatus from "../components/ConnectionStatus";
 
 export default function LobbyPage() {
-  const { user, room, team, createRoom, joinRoom, setReady, selectPokemon, connection } = useApp();
+  const { user, room, team, createRoom, joinRoom, setReady, selectPokemon, connection, playCry, playSound } = useApp();
   const navigate = useNavigate();
   const [code, setCode] = React.useState("");
   const [query, setQuery] = React.useState("");
@@ -74,12 +74,17 @@ export default function LobbyPage() {
               <PokemonSearch value={query} onChange={(e) => setQuery(e.target.value)} />
               {loading && <div className="small" style={{ marginTop: 6 }}>Searching...</div>}
               <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 10 }}>
-                {results.map((p) => (
+                {results.map((p: any) => (
                   <button
                     key={p.pokemon_id}
                     className="btn btn-ghost"
                     style={{ padding: 8, minWidth: 110 }}
-                    onClick={() => selectPokemon(p)}
+                    onClick={() => {
+                      playCry(p.cryUrl ?? null);
+                      playSound("click");
+                      selectPokemon(p);
+                    }}
+                    onMouseEnter={() => playCry(p.cryUrl ?? null)}
                   >
                     <img
                       src={p.sprite_url || ""}

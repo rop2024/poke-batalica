@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useCallback, useEffect } 
 import io, { type Socket } from "socket.io-client";
 import type { AppState, ConnectionStatus, Pokemon, Room, User } from "./types";
 import { api } from "./api";
+import { initAudio, playSound as playSfx, playCry as playCryAudio } from "./sound";
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:8000";
 
 export interface AppContextType extends AppState {
@@ -12,11 +13,14 @@ export interface AppContextType extends AppState {
   joinRoom: (code: string) => Promise<void>;
   leaveRoom: () => Promise<void>;
   setReady: () => Promise<void>;
-  selectPokemon: (pokemon: Pokemon) => void;
+  selectPokemon: (pokemon: Pokemon) => Promise<void>;
   submitMove: (moveName: string) => Promise<void>;
   forfeit: () => Promise<void>;
   toggleSound: () => void;
   setSound: (partial: Partial<AppState["sound"]>) => void;
+  playSound: (name: string) => void;
+  playCry: (cryUrl: string | null) => void;
+  initAudioCtx: () => void;
   connectSocket: (roomId: string) => void;
   disconnectSocket: () => void;
 }
@@ -26,6 +30,7 @@ const initialSound: AppState["sound"] = {
   music: 0.5,
   effects: 0.8,
   muted: false,
+  reducedMotion: false,
 };
 
 const initialState: AppState = {
@@ -97,6 +102,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // ignore
       }
     }
+    // Load sound preferences from localStorage
+    const storedSound = localStorage.getItem("soundPrefs");
+    if (storedSound) {
+      try {
+        const parsed = JSON.parse(storedSound) as Partial<AppState["sound"]>;
+        dispatch({ type: "SET_SOUND", payload: parsed });
+      } catch {
+        // ignore
+      }
+    }
+    // Initialize audio context on first interaction (lazy)
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
     };
@@ -133,9 +149,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const joinRoom = useCallback(async (code: string) => {
-    const rooms = await api.getRoom(code);
-    dispatch({ type: "SET_ROOM", payload: rooms.room });
-  }, []);
+    if (!state.user) return;
+    try {
+      await api.joinRoom(code);
+      const { room } = await api.getRoom(code);
+      dispatch({ type: "SET_ROOM", payload: room });
+    } catch (err: any) {
+      throw new Error(err.message || "Failed to join room");
+    }
+  }, [state.user]);
 
   const leaveRoom = useCallback(async () => {
     if (!state.room) return;
@@ -153,9 +175,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: "SET_ROOM", payload: room });
   }, [state.room]);
 
-  const selectPokemon = useCallback((pokemon: Pokemon) => {
+  const selectPokemon = useCallback(async (pokemon: Pokemon) => {
+    if (!state.user) return;
+    try {
+      await api.createTeam(pokemon.name);
+    } catch {
+      // Team may already exist; continue with local selection
+    }
     dispatch({ type: "SET_TEAM", payload: pokemon });
-  }, []);
+  }, [state.user]);
 
   const submitMove = useCallback(async (moveName: string) => {
     if (!state.room) return;
@@ -176,7 +204,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setSound = useCallback((partial: Partial<AppState["sound"]>) => {
     dispatch({ type: "SET_SOUND", payload: partial });
-  }, []);
+    try {
+      localStorage.setItem("soundPrefs", JSON.stringify({ ...state.sound, ...partial }));
+    } catch {
+      // ignore
+    }
+  }, [state.sound]);
+
+  const playSound = useCallback((name: string) => {
+    playSfx(name, state.sound);
+  }, [state.sound]);
+
+  const playCry = useCallback((cryUrl: string | null) => {
+    playCryAudio(cryUrl, state.sound);
+  }, [state.sound]);
+
+  const initAudioCtx = useCallback(() => {
+    initAudio(state.sound);
+  }, [state.sound]);
 
   const connectSocket = useCallback((roomId: string) => {
     if (socketRef.current) socketRef.current.disconnect();
@@ -238,6 +283,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     forfeit,
     toggleSound,
     setSound,
+    playSound,
+    playCry,
+    initAudioCtx,
     connectSocket,
     disconnectSocket,
   };

@@ -1,4 +1,5 @@
 import React from "react";
+import { useApp } from "../BattleContext";
 import type { Pokemon } from "../types";
 
 interface Props {
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export default function TeamSelector({ pokemon, onSelect }: Props) {
+  const { playCry, playSound } = useApp();
   const [query, setQuery] = React.useState("");
   const [results, setResults] = React.useState<Pokemon[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -19,6 +21,22 @@ export default function TeamSelector({ pokemon, onSelect }: Props) {
       .then((data: Pokemon[]) => setResults(data))
       .finally(() => setLoading(false));
   }, [query]);
+
+  // Preload images for search results
+  React.useEffect(() => {
+    results.forEach((p) => {
+      if (p.sprite_url) {
+        const img = new Image();
+        img.src = p.sprite_url;
+      }
+    });
+  }, [results]);
+
+  const handleSelect = (p: Pokemon) => {
+    playCry(p.cry_url ?? null);
+    playSound("click");
+    onSelect(p);
+  };
 
   return (
     <div className="card team-selector">
@@ -41,7 +59,8 @@ export default function TeamSelector({ pokemon, onSelect }: Props) {
             style={{
               border: pokemon?.pokemon_id === p.pokemon_id ? "2px solid var(--accent)" : "1px solid var(--border)",
             }}
-            onClick={() => onSelect(p)}
+            onClick={() => handleSelect(p)}
+            onMouseEnter={() => playCry(p.cry_url ?? null)}
           >
             <img
               className="team-btn-img"
@@ -57,7 +76,7 @@ export default function TeamSelector({ pokemon, onSelect }: Props) {
       {pokemon && (
         <div className="team-selected">
           <div className="pokemon-name" style={{ marginBottom: 4 }}>Selected: {pokemon.name}</div>
-          <button className="btn btn-primary btn-full" onClick={() => onSelect(pokemon)}>
+          <button className="btn btn-primary btn-full" onClick={() => handleSelect(pokemon)}>
             Confirm
           </button>
         </div>

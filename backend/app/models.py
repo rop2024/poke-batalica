@@ -87,3 +87,35 @@ class BattleEvent(Base):
     effectiveness = Column(Float, nullable=True)
     message = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class SyncedPokemon(Base):
+    __tablename__ = "synced_pokemon"
+
+    id = Column(Integer, primary_key=True, index=True)
+    pokemon_id = Column(Integer, unique=True, index=True, nullable=False)
+    name = Column(String(100), nullable=False, index=True)
+    types = Column(Text, nullable=False)  # JSON array of type names
+    base_hp = Column(Integer, default=50)
+    base_attack = Column(Integer, default=50)
+    base_defense = Column(Integer, default=50)
+    base_special_attack = Column(Integer, default=50)
+    base_special_defense = Column(Integer, default=50)
+    base_speed = Column(Integer, default=50)
+    sprite_url = Column(String(500), nullable=True)
+    official_artwork_url = Column(String(500), nullable=True)
+    cry_url = Column(String(500), nullable=True)
+    moves = Column(Text, nullable=True)  # JSON array of move dicts
+    synced_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class SyncedMove(Base):
+    __tablename__ = "synced_moves"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, index=True, nullable=False)
+    power = Column(Integer, nullable=True)
+    move_type = Column(String(50), default="normal")
+    accuracy = Column(Integer, nullable=True)
+    pp = Column(Integer, default=30)
+    synced_at = Column(DateTime(timezone=True), server_default=func.now())

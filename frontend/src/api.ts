@@ -53,10 +53,10 @@ export const api = {
   leaveRoom: (roomId: string) =>
     request<{ ok: boolean }>(`/rooms/${roomId}/leave`, { method: "DELETE" }),
 
-  createTeam: (pokemonId: number) =>
+  createTeam: (pokemonName: string) =>
     request<{ team: Pokemon }>("/teams", {
       method: "POST",
-      body: JSON.stringify({ pokemon_id: pokemonId }),
+      body: JSON.stringify({ pokemon_name: pokemonName }),
     }),
   getTeams: () => request<{ teams: Pokemon[] }>("/teams"),
 

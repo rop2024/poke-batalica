@@ -58,6 +58,38 @@ class PokemonOut(BaseModel):
         from_attributes = True
 
 
+# ---- Synced Pokemon (local cache of PokeAPI data) ----
+class SyncedMoveOut(BaseModel):
+    name: str
+    power: Optional[int] = None
+    move_type: str
+    accuracy: Optional[int] = None
+    pp: int
+
+    class Config:
+        from_attributes = True
+
+
+class SyncedPokemonOut(BaseModel):
+    pokemon_id: int
+    name: str
+    types: List[str]
+    base_hp: int
+    base_attack: int
+    base_defense: int
+    base_special_attack: int
+    base_special_defense: int
+    base_speed: int
+    sprite_url: Optional[str] = None
+    official_artwork_url: Optional[str] = None
+    cry_url: Optional[str] = None
+    moves: List[SyncedMoveOut] = []
+    synced_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
 # ---- Rooms ----
 class RoomOut(BaseModel):
     id: int

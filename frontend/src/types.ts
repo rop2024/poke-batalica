@@ -81,6 +81,7 @@ export interface SoundPrefs {
   music: number;
   effects: number;
   muted: boolean;
+  reducedMotion: boolean;
 }
 
 export interface AppState {

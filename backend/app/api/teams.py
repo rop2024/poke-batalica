@@ -1,5 +1,5 @@
 import json
-from typing import List
+from typing import List, Optional
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -11,6 +11,34 @@ from .auth import get_current_user
 router = APIRouter(prefix="/teams", tags=["teams"])
 
 POKEAPI = "https://pokeapi.co/api/v2"
+
+
+def _synced_pokemon_data(db: Session, name: str) -> Optional[dict]:
+    """Return synced Pokemon data from the local DB if available."""
+    row = (
+        db.query(models.SyncedPokemon)
+        .filter(models.SyncedPokemon.name == name.lower())
+        .first()
+    )
+    if not row:
+        return None
+    types = json.loads(row.types) if row.types else []
+    moves = json.loads(row.moves) if row.moves else []
+    return {
+        "pokemon_id": row.pokemon_id,
+        "name": row.name,
+        "types": types,
+        "base_hp": row.base_hp,
+        "base_attack": row.base_attack,
+        "base_defense": row.base_defense,
+        "base_special_attack": row.base_special_attack,
+        "base_special_defense": row.base_special_defense,
+        "base_speed": row.base_speed,
+        "sprite_url": row.sprite_url,
+        "official_artwork_url": row.official_artwork_url,
+        "cry_url": row.cry_url,
+        "moves": moves,
+    }
 
 
 def _fetch_pokemon_data(name: str) -> dict:
@@ -67,9 +95,17 @@ def _fetch_pokemon_data(name: str) -> dict:
     }
 
 
+def _get_pokemon_data(db: Session, name: str) -> dict:
+    """Get Pokemon data, preferring the local synced cache; fall back to PokeAPI."""
+    data = _synced_pokemon_data(db, name)
+    if data:
+        return data
+    return _fetch_pokemon_data(name)
+
+
 @router.post("", response_model=schemas.TeamOut)
 def create_team(team_in: schemas.TeamCreate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    pokemon_data = _fetch_pokemon_data(team_in.pokemon_name)
+    pokemon_data = _get_pokemon_data(db, team_in.pokemon_name)
     team = models.Team(
         pokemon_name=team_in.pokemon_name,
         user_id=current_user.id,
